@@ -2,8 +2,9 @@
 import Link from "next/link"
 import { auth } from "@/lib/auth"
 import { LogoutButton } from "./logout-button"
-
+import { connection } from "next/server"
 export async function MainMenu() {
+  await connection();
   const session = await auth()
   const isLoggedIn = !!session?.user
 

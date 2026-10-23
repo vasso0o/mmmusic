@@ -1,3 +1,103 @@
-export default function Page() {
-  return <div>TODO</div>;
+import { Suspense } from "react"
+import { redirect } from "next/navigation"
+import { CreateLeagueForm } from "@/components/league/CreateLeagueForm"
+import { LeagueCard } from "@/components/league/LeagueCard"
+import { LeagueSearch } from "@/components/league/LeagueSearch"
+import { auth } from "@/lib/auth"
+import { prisma } from "@/lib/prisma"
+
+export default function MainPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="mx-auto w-full max-w-5xl space-y-8 px-4 py-8">
+          <div className="h-8 w-full max-w-2xl animate-pulse rounded-lg bg-muted" />
+          <section className="w-full space-y-4">
+            <div className="h-7 w-40 animate-pulse rounded bg-muted" />
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
+              {[0, 1, 2].map((item) => (
+                <div
+                  key={item}
+                  className="h-28 animate-pulse rounded-xl bg-muted"
+                />
+              ))}
+            </div>
+          </section>
+        </div>
+      }
+    >
+      <MainPageContent />
+    </Suspense>
+  )
+}
+
+async function MainPageContent() {
+  const session = await auth()
+
+  if (!session?.user?.id) {
+    redirect("/login")
+  }
+
+  const [joinedLeagues, ownedLeagues] = await Promise.all([
+    prisma.leagueMember.findMany({
+      where: {
+        userId: session.user.id,
+        role: "MEMBER",
+        leftAt: null,
+      },
+      include: { league: true },
+      orderBy: { joinedAt: "desc" },
+      take: 6,
+    }),
+    prisma.league.findMany({
+      where: {
+        ownerId: session.user.id,
+        archivedAt: null,
+      },
+      orderBy: { createdAt: "desc" },
+      take: 6,
+    }),
+  ])
+
+  return (
+    <div className="mx-auto flex w-full max-w-5xl flex-col items-center px-4 py-8">
+      <LeagueSearch />
+
+      <section className="mt-12 w-full">
+        <h2 className="mb-4 text-xl font-bold">Joined Leagues</h2>
+        {joinedLeagues.length === 0 ? (
+          <p className="text-muted-foreground">
+            You haven&apos;t joined any leagues yet.
+          </p>
+        ) : (
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
+            {joinedLeagues.map((membership) => (
+              <LeagueCard
+                key={membership.leagueId}
+                id={membership.league.id}
+                title={membership.league.name}
+              />
+            ))}
+          </div>
+        )}
+      </section>
+
+      <CreateLeagueForm />
+
+      <section className="mt-12 w-full">
+        <h2 className="mb-4 text-xl font-bold">Your Created Leagues</h2>
+        {ownedLeagues.length === 0 ? (
+          <p className="text-muted-foreground">
+            You haven&apos;t created any leagues yet.
+          </p>
+        ) : (
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
+            {ownedLeagues.map((league) => (
+              <LeagueCard key={league.id} id={league.id} title={league.name} />
+            ))}
+          </div>
+        )}
+      </section>
+    </div>
+  )
 }
