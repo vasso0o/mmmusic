@@ -42,7 +42,6 @@ async function MainPageContent() {
     prisma.leagueMember.findMany({
       where: {
         userId: session.user.id,
-        role: "MEMBER",
         leftAt: null,
       },
       include: { league: true },

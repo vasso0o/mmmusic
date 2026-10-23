@@ -79,6 +79,35 @@ export function CreateLeagueForm() {
             />
           </div>
 
+          <div className="space-y-2">
+            <label
+              htmlFor="league-description"
+              className="text-sm font-medium"
+            >
+              Description (Optional)
+            </label>
+            <textarea
+              id="league-description"
+              name="description"
+              maxLength={2000}
+              rows={4}
+              placeholder="Tell people what your league is about..."
+              className="w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm outline-none placeholder:text-muted-foreground focus-visible:ring-3 focus-visible:ring-ring/50"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label htmlFor="league-image" className="text-sm font-medium">
+              Cover Image URL (Optional)
+            </label>
+            <Input
+              id="league-image"
+              name="image"
+              type="url"
+              placeholder="https://example.com/image.jpg"
+            />
+          </div>
+
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <label htmlFor="league-point-budget" className="text-sm font-medium">

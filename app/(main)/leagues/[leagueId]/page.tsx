@@ -1,18 +1,29 @@
+import { Suspense } from "react"
+import Image from "next/image"
+import Link from "next/link"
 import { notFound, redirect } from "next/navigation"
+import { ComingSoon } from "@/components/layout/coming-soon"
 import { EditLeagueForm } from "@/components/league/EditLeagueForm"
-import { FakeLeagueDashboard } from "@/components/league/FakeLeagueDashboard"
+import { LeagueDashboard } from "@/components/league/LeagueDashboard"
 import { JoinLeagueForm } from "@/components/league/JoinLeagueForm"
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
+import { LeaveLeagueButton } from "@/components/league/LeaveLeagueButton"
+import { PublicLeagueView } from "@/components/league/PublicLeagueView"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 
-export default async function LeaguePage({
+export default function LeaguePage({
+  params,
+}: {
+  params: Promise<{ leagueId: string }>
+}) {
+  return (
+    <Suspense fallback={<ComingSoon title="Loading league" />}>
+      <LeaguePageContent params={params} />
+    </Suspense>
+  )
+}
+
+async function LeaguePageContent({
   params,
 }: {
   params: Promise<{ leagueId: string }>
@@ -35,64 +46,82 @@ export default async function LeaguePage({
     notFound()
   }
 
-  const membership = await prisma.leagueMember.findUnique({
-    where: {
-      leagueId_userId: { leagueId, userId: session.user.id },
-    },
-    select: { leftAt: true },
-  })
-
+  const [membership, memberCount, currentUser] = await Promise.all([
+    prisma.leagueMember.findUnique({
+      where: {
+        leagueId_userId: { leagueId, userId: session.user.id },
+      },
+      select: { leftAt: true },
+    }),
+    prisma.leagueMember.count({
+      where: { leagueId, leftAt: null },
+    }),
+    prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { name: true, image: true },
+    }),
+  ])
   const isOwner = league.ownerId === session.user.id
   const isMember = isOwner || membership?.leftAt === null
+  const rounds = isMember
+    ? await prisma.round.findMany({
+        where: { leagueId },
+        orderBy: { roundNumber: "asc" },
+      })
+    : []
 
   return (
     <div className="mx-auto w-full max-w-5xl px-4 py-8">
-      <header className="mb-8">
-        <h1 className="text-3xl font-bold">{league.name}</h1>
-        <p className="text-muted-foreground">Hosted by {league.owner.name}</p>
-      </header>
-
       {!isMember ? (
-        <Card className="max-w-2xl">
-          <CardHeader>
-            <CardTitle>League Details</CardTitle>
-            <CardDescription>
-              Join this league to participate in rounds and vote.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <dl className="grid grid-cols-2 gap-4 text-sm">
-              <div>
-                <dt className="text-muted-foreground">Point Budget</dt>
-                <dd className="font-medium">
-                  {league.pointBudget} pts per round
-                </dd>
-              </div>
-              <div>
-                <dt className="text-muted-foreground">Downvotes</dt>
-                <dd className="font-medium">
-                  {league.allowDownvotes ? "Allowed" : "Not allowed"}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-muted-foreground">Max Rounds</dt>
-                <dd className="font-medium">{league.maxRounds ?? "Endless"}</dd>
-              </div>
-              <div>
-                <dt className="text-muted-foreground">Created</dt>
-                <dd className="font-medium">
-                  {league.createdAt.toLocaleDateString()}
-                </dd>
-              </div>
-            </dl>
-            <div className="border-t pt-4">
-              <JoinLeagueForm leagueId={league.id} />
-            </div>
-          </CardContent>
-        </Card>
+        <div className="space-y-6">
+          <PublicLeagueView league={league} memberCount={memberCount} />
+          <div className="max-w-2xl border-t pt-6">
+            <h2 className="mb-2 text-lg font-semibold">Want to join?</h2>
+            <JoinLeagueForm leagueId={league.id} />
+          </div>
+        </div>
       ) : (
         <>
-          <FakeLeagueDashboard />
+          <header className="mb-8 flex items-center justify-between gap-4">
+            <div>
+              <h1 className="text-3xl font-bold">{league.name}</h1>
+              <p className="text-muted-foreground">
+                Hosted by {league.owner.name}
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
+              {!isOwner && <LeaveLeagueButton leagueId={league.id} />}
+              {currentUser && (
+                <Link
+                  href="/profile"
+                  className="flex items-center gap-2 rounded-full border bg-muted/50 py-1.5 pr-3 pl-1.5 transition-colors hover:bg-muted"
+                >
+                  <span className="relative flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-secondary text-sm font-medium text-secondary-foreground">
+                    {currentUser.image ? (
+                      <Image
+                        src={currentUser.image}
+                        alt=""
+                        fill
+                        sizes="32px"
+                        unoptimized
+                        className="object-cover"
+                      />
+                    ) : (
+                      currentUser.name.charAt(0).toUpperCase() || "U"
+                    )}
+                  </span>
+                  <span className="text-sm font-medium">
+                    {currentUser.name}
+                  </span>
+                </Link>
+              )}
+            </div>
+          </header>
+          <LeagueDashboard
+            league={league}
+            rounds={rounds}
+            currentUserId={session.user.id}
+          />
           {isOwner && <EditLeagueForm league={league} />}
         </>
       )}

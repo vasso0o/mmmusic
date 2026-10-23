@@ -124,6 +124,8 @@ enum NotificationType {
 model League {
   id             String    @id @default(cuid())
   name           String
+  description    String?
+  image          String? 
   passwordHash   String
   ownerId        String
   pointBudget    Int       @default(10)
