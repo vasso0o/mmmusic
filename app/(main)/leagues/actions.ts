@@ -3,6 +3,7 @@
 import bcrypt from "bcryptjs"
 import { revalidatePath } from "next/cache"
 import { auth } from "@/lib/auth"
+import type { Prisma } from "@/lib/generated/prisma/client"
 import { prisma } from "@/lib/prisma"
 
 export type CreateLeagueResult =
@@ -12,6 +13,35 @@ export type CreateLeagueResult =
 export type LeagueActionResult =
   | { ok: true }
   | { ok: false; error: string }
+
+const DAY_IN_MILLISECONDS = 24 * 60 * 60 * 1000
+
+async function recalculateTimeline(
+  transaction: Prisma.TransactionClient,
+  leagueId: string
+) {
+  const rounds = await transaction.round.findMany({
+    where: { leagueId },
+    orderBy: { roundNumber: "asc" },
+  })
+  if (rounds.length === 0) return
+
+  let currentStart = rounds[0].startsAt
+  for (const round of rounds) {
+    const submitDeadline = new Date(
+      currentStart.getTime() + round.submitDays * DAY_IN_MILLISECONDS
+    )
+    const voteDeadline = new Date(
+      submitDeadline.getTime() + round.voteDays * DAY_IN_MILLISECONDS
+    )
+
+    await transaction.round.update({
+      where: { id: round.id },
+      data: { startsAt: currentStart, submitDeadline, voteDeadline },
+    })
+    currentStart = voteDeadline
+  }
+}
 
 function readOptionalHttpUrl(value: FormDataEntryValue | null) {
   if (typeof value !== "string" || !value.trim()) return { ok: true as const, value: null }
@@ -342,19 +372,15 @@ export async function createRound(
 
   const themeValue = formData.get("theme")
   const themeDescValue = formData.get("themeDesc")
-  const submitDeadlineValue = formData.get("submitDeadline")
-  const voteDeadlineValue = formData.get("voteDeadline")
+  const submitDaysValue = formData.get("submitDays")
+  const voteDaysValue = formData.get("voteDays")
   const theme = typeof themeValue === "string" ? themeValue.trim() : ""
   const themeDesc =
     typeof themeDescValue === "string" ? themeDescValue.trim() : ""
-  const submitDeadline =
-    typeof submitDeadlineValue === "string" && submitDeadlineValue
-      ? new Date(submitDeadlineValue)
-      : null
-  const voteDeadline =
-    typeof voteDeadlineValue === "string" && voteDeadlineValue
-      ? new Date(voteDeadlineValue)
-      : null
+  const submitDays =
+    typeof submitDaysValue === "string" ? Number(submitDaysValue) : Number.NaN
+  const voteDays =
+    typeof voteDaysValue === "string" ? Number(voteDaysValue) : Number.NaN
 
   if (theme.length < 3 || theme.length > 100) {
     return { ok: false, error: "Theme must be between 3 and 100 characters." }
@@ -362,19 +388,14 @@ export async function createRound(
   if (themeDesc.length > 1000) {
     return { ok: false, error: "Description must be 1000 characters or fewer." }
   }
-  if (
-    !submitDeadline ||
-    !voteDeadline ||
-    Number.isNaN(submitDeadline.getTime()) ||
-    Number.isNaN(voteDeadline.getTime())
-  ) {
-    return { ok: false, error: "Enter valid submission and voting deadlines." }
+  if (!Number.isInteger(submitDays) || submitDays < 1 || submitDays > 365) {
+    return {
+      ok: false,
+      error: "Submission phase must be between 1 and 365 days.",
+    }
   }
-  if (submitDeadline <= new Date()) {
-    return { ok: false, error: "Submission deadline must be in the future." }
-  }
-  if (voteDeadline <= submitDeadline) {
-    return { ok: false, error: "Voting deadline must be after submissions close." }
+  if (!Number.isInteger(voteDays) || voteDays < 1 || voteDays > 365) {
+    return { ok: false, error: "Voting phase must be between 1 and 365 days." }
   }
 
   try {
@@ -382,8 +403,15 @@ export async function createRound(
       const highestRound = await transaction.round.findFirst({
         where: { leagueId },
         orderBy: { roundNumber: "desc" },
-        select: { roundNumber: true },
+        select: { roundNumber: true, voteDeadline: true },
       })
+      const startsAt = highestRound?.voteDeadline ?? new Date()
+      const submitDeadline = new Date(
+        startsAt.getTime() + submitDays * DAY_IN_MILLISECONDS
+      )
+      const voteDeadline = new Date(
+        submitDeadline.getTime() + voteDays * DAY_IN_MILLISECONDS
+      )
 
       await transaction.round.create({
         data: {
@@ -392,10 +420,14 @@ export async function createRound(
           roundNumber: (highestRound?.roundNumber ?? 0) + 1,
           theme,
           themeDesc: themeDesc || null,
+          startsAt,
+          submitDays,
+          voteDays,
           submitDeadline,
           voteDeadline,
         },
       })
+      await recalculateTimeline(transaction, leagueId)
     })
   } catch (error) {
     console.error("createRound failed:", error)
@@ -428,7 +460,29 @@ export async function deleteRound(roundId: string): Promise<LeagueActionResult> 
   }
 
   try {
-    await prisma.round.delete({ where: { id: roundId } })
+    await prisma.$transaction(async (transaction) => {
+      await transaction.round.delete({ where: { id: roundId } })
+
+      const remainingRounds = await transaction.round.findMany({
+        where: { leagueId: round.league.id },
+        orderBy: { roundNumber: "asc" },
+        select: { id: true },
+      })
+      for (let index = 0; index < remainingRounds.length; index += 1) {
+        await transaction.round.update({
+          where: { id: remainingRounds[index].id },
+          data: { roundNumber: -(index + 1) },
+        })
+      }
+      for (let index = 0; index < remainingRounds.length; index += 1) {
+        await transaction.round.update({
+          where: { id: remainingRounds[index].id },
+          data: { roundNumber: index + 1 },
+        })
+      }
+
+      await recalculateTimeline(transaction, round.league.id)
+    })
   } catch (error) {
     console.error("deleteRound failed:", error)
     return { ok: false, error: "Failed to delete the round. Please try again." }
@@ -493,6 +547,7 @@ export async function moveRound(
         where: { id: round.id },
         data: { roundNumber: targetRound.roundNumber },
       })
+      await recalculateTimeline(transaction, round.league.id)
 
       return true
     })

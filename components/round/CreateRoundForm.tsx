@@ -16,22 +16,6 @@ export function CreateRoundForm({ leagueId }: { leagueId: string }) {
     setError(null)
 
     try {
-      for (const field of ["submitDeadline", "voteDeadline"]) {
-        const value = formData.get(field)
-        if (typeof value !== "string" || !value) {
-          setError("Enter valid submission and voting deadlines.")
-          return
-        }
-
-        const deadline = new Date(value)
-        if (Number.isNaN(deadline.getTime())) {
-          setError("Enter valid submission and voting deadlines.")
-          return
-        }
-
-        formData.set(field, deadline.toISOString())
-      }
-
       setIsPending(true)
       const result = await createRound(leagueId, formData)
       if (!result.ok) {
@@ -81,24 +65,30 @@ export function CreateRoundForm({ leagueId }: { leagueId: string }) {
       </div>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="space-y-2">
-          <label htmlFor="round-submit-deadline" className="text-sm font-medium">
-            Submit Deadline
+          <label htmlFor="round-submit-days" className="text-sm font-medium">
+            Submission Phase (Days)
           </label>
           <Input
-            id="round-submit-deadline"
-            name="submitDeadline"
-            type="datetime-local"
+            id="round-submit-days"
+            name="submitDays"
+            type="number"
+            min={1}
+            max={365}
+            defaultValue={3}
             required
           />
         </div>
         <div className="space-y-2">
-          <label htmlFor="round-vote-deadline" className="text-sm font-medium">
-            Vote Deadline
+          <label htmlFor="round-vote-days" className="text-sm font-medium">
+            Voting Phase (Days)
           </label>
           <Input
-            id="round-vote-deadline"
-            name="voteDeadline"
-            type="datetime-local"
+            id="round-vote-days"
+            name="voteDays"
+            type="number"
+            min={1}
+            max={365}
+            defaultValue={2}
             required
           />
         </div>

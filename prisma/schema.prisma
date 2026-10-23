@@ -183,6 +183,9 @@ model Round {
   theme          String
   themeDesc      String?
   phase          RoundPhase @default(SUBMISSION)
+  startsAt       DateTime
+  submitDays     Int
+  voteDays       Int
   submitDeadline DateTime
   voteDeadline   DateTime
   revealedAt     DateTime?

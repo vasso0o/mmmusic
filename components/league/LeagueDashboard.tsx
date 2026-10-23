@@ -23,7 +23,9 @@ type DashboardRound = {
   theme: string
   themeDesc: string | null
   phase: string
+  startsAt: Date
   submitDeadline: Date
+  voteDeadline: Date
   createdById: string
 }
 
@@ -92,8 +94,22 @@ export function LeagueDashboard({
                         </span>
                       </p>
                       <p>
+                        Starts:{" "}
+                        {round.startsAt.toLocaleString(undefined, {
+                          dateStyle: "medium",
+                          timeStyle: "short",
+                        })}
+                      </p>
+                      <p>
                         Submit by:{" "}
                         {round.submitDeadline.toLocaleString(undefined, {
+                          dateStyle: "medium",
+                          timeStyle: "short",
+                        })}
+                      </p>
+                      <p>
+                        Voting ends:{" "}
+                        {round.voteDeadline.toLocaleString(undefined, {
                           dateStyle: "medium",
                           timeStyle: "short",
                         })}
