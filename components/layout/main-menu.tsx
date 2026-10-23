@@ -3,6 +3,7 @@ import Link from "next/link"
 import { auth } from "@/lib/auth"
 import { LogoutButton } from "./logout-button"
 import { connection } from "next/server"
+import { ModeToggle } from "@/components/layout/mode-toggle"
 export async function MainMenu() {
   await connection();
   const session = await auth()
@@ -15,6 +16,7 @@ export async function MainMenu() {
       </Link>
 
       <div className="ml-auto flex items-center gap-4">
+        <ModeToggle />
         {isLoggedIn ? (
           <>
             <Link href="/" className="text-sm hover:underline">

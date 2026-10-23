@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Suspense } from "react";
 import { MainMenu } from "@/components/layout/main-menu";
+import { ThemeProvider } from "@/components/theme-provider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -21,12 +22,19 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body className="min-h-full flex flex-col">
-        <Suspense fallback={<nav className="border-b px-4 py-3 h-[57px]" />}>
-          <MainMenu />
-        </Suspense>
-        {children}
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
+          <Suspense fallback={<nav className="border-b px-4 py-3 h-[57px]" />}>
+            <MainMenu />
+          </Suspense>
+          {children}
+        </ThemeProvider>
       </body>
     </html>
   );
