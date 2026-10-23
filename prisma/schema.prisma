@@ -1,0 +1,278 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// AUTH.JS CORE (NextAuth v5 compatible)
+// ═════════════════════════════════════════════════════════════════════════════
+// With pure credentials + JWT sessions, only `User` + `passwordHash` are
+// strictly required. The rest future-proof for OAuth, magic links, etc.
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  emailVerified DateTime?
+  name          String
+  image         String?
+  // Required for credentials users, optional so future OAuth-only users can exist.
+  passwordHash  String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  // Soft delete. Prevents losing submission/vote history from a league when a
+  // user "deletes their account." Hard delete is blocked by Restrict FKs.
+  deletedAt     DateTime?
+
+  // Auth.js relations
+  accounts Account[]
+  sessions Session[]
+
+  // App relations
+  leaguesOwned  League[]       @relation("LeagueOwner")
+  memberships   LeagueMember[]
+  submissions   Submission[]
+  votes         Vote[]
+  roundsCreated Round[]        @relation("RoundCreator")
+  notifications Notification[] @relation("NotificationRecipient")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// ENUMS
+// ═════════════════════════════════════════════════════════════════════════════
+
+enum LeagueRole {
+  OWNER
+  MEMBER
+}
+
+enum RoundPhase {
+  SUBMISSION
+  VOTING
+  REVEALED
+}
+
+enum Platform {
+  YOUTUBE
+  SOUNDCLOUD
+  OTHER
+}
+
+enum NotificationType {
+  ROUND_CREATED
+  SUBMISSION_RECEIVED
+  VOTING_STARTED
+  ROUND_REVEALED
+  MEMBER_JOINED
+  MEMBER_LEFT
+  COMMENT_RECEIVED
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// LEAGUE
+// ═════════════════════════════════════════════════════════════════════════════
+// Every league is publicly searchable by name. Joining requires the league
+// password (bcrypt-hashed in `passwordHash`). No invite codes, no hidden leagues.
+
+model League {
+  id             String    @id @default(cuid())
+  name           String
+  passwordHash   String
+  ownerId        String
+  pointBudget    Int       @default(10)
+  allowDownvotes Boolean   @default(false)
+  // Optional cap. Enables "round 3 of 10" UI + stats.
+  maxRounds      Int?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  // Soft archive. Read-only but preserves all data.
+  archivedAt     DateTime?
+
+  owner   User           @relation("LeagueOwner", fields: [ownerId], references: [id], onDelete: Restrict)
+  members LeagueMember[]
+  rounds  Round[]
+
+  @@index([name])
+  @@index([ownerId])
+  @@index([createdAt])
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// MEMBERSHIP
+// ═════════════════════════════════════════════════════════════════════════════
+// Composite PK, no surrogate id. A user "leaves" by setting `leftAt`; the row
+// stays so historical submissions/votes still belong to someone. Rejoining
+// clears `leftAt`. Owner is always also a member (app-enforced invariant).
+
+model LeagueMember {
+  leagueId String
+  userId   String
+  role     LeagueRole @default(MEMBER)
+  joinedAt DateTime   @default(now())
+  leftAt   DateTime?
+
+  league League @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([leagueId, userId])
+  @@index([userId])
+  @@index([leagueId, leftAt])
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// ROUND
+// ═════════════════════════════════════════════════════════════════════════════
+// Any league member can create a round. `roundNumber` is sequential per league
+// and computed on insert (MAX + 1 inside a transaction). `createdById` is
+// restricted so a user who has created rounds can't be hard-deleted.
+
+model Round {
+  id             String     @id @default(cuid())
+  leagueId       String
+  createdById    String
+  roundNumber    Int
+  theme          String
+  themeDesc      String?
+  phase          RoundPhase @default(SUBMISSION)
+  submitDeadline DateTime
+  voteDeadline   DateTime
+  revealedAt     DateTime?
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+
+  league      League       @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+  createdBy   User         @relation("RoundCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  submissions Submission[]
+  votes       Vote[]
+
+  @@unique([leagueId, roundNumber])
+  @@index([phase, submitDeadline]) // cron: rounds needing SUBMISSION → VOTING flip
+  @@index([phase, voteDeadline]) // cron: rounds needing VOTING → REVEALED flip
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// SUBMISSION
+// ═════════════════════════════════════════════════════════════════════════════
+// Raw URL + platform, no API metadata. `title`/`artist` are user-typed (optional,
+// since we don't fetch them). One submission per user per round, DB-enforced.
+
+model Submission {
+  id           String   @id @default(cuid())
+  roundId      String
+  userId       String
+  url          String
+  platform     Platform
+  title        String?
+  artist       String?
+  pitch        String?
+  disqualified Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  round Round  @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  user  User   @relation(fields: [userId], references: [id], onDelete: Restrict)
+  votes Vote[]
+
+  @@unique([roundId, userId])
+  @@index([userId])
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// VOTE
+// ═════════════════════════════════════════════════════════════════════════════
+// `roundId` is DENORMALIZED from Submission for cheap round-level aggregation
+// and per-voter budget checks. It is always populated from the parent
+// Submission's roundId inside a single helper (`castVote`) to prevent drift.
+// One vote per voter per submission, DB-enforced.
+
+model Vote {
+  id           String   @id @default(cuid())
+  roundId      String
+  submissionId String
+  voterId      String
+  points       Int // can be negative if League.allowDownvotes
+  comment      String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  round      Round      @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  submission Submission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  voter      User       @relation(fields: [voterId], references: [id], onDelete: Restrict)
+
+  @@unique([submissionId, voterId])
+  @@index([roundId, voterId]) // budget check + "my votes in this round"
+  @@index([roundId, submissionId]) // per-round aggregation (GROUP BY submissionId)
+  @@index([voterId]) // user's full voting history
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// NOTIFICATIONS
+// ═════════════════════════════════════════════════════════════════════════════
+// References are plain strings, not FKs — notifications should survive deletion
+// of the entity they point at. `message` is a pre-rendered string; `type` +
+// ID hints drive deep-links. Safe to drop entirely if you don't want in-app
+// notifications for v1.
+
+model Notification {
+  id           String           @id @default(cuid())
+  userId       String
+  type         NotificationType
+  leagueId     String?
+  roundId      String?
+  submissionId String?
+  message      String
+  readAt       DateTime?
+  createdAt    DateTime         @default(now())
+
+  user User @relation("NotificationRecipient", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, readAt]) // unread badge count
+  @@index([userId, createdAt]) // notification list
+}
