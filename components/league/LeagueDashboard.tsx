@@ -1,7 +1,7 @@
 import Link from "next/link"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { RoundCard } from "@/components/round/RoundCard"
 import { Button } from "@/components/ui/button"
+import { LeagueInfoCard } from "@/components/league/LeagueInfoCard"
 import type { RoundPhase, RoundPlatform } from "@/lib/round-types"
 
 type DashboardMember = {
@@ -92,31 +92,7 @@ export function LeagueDashboard({
       </div>
 
       <div className="space-y-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>League Info</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2 text-sm">
-            <Link
-              href={`/leagues/${league.id}/stats`}
-              className="inline-block font-medium text-primary hover:underline"
-            >
-              League statistics
-            </Link>
-            <p>
-              <span className="text-muted-foreground">Owner:</span>{" "}
-              {league.owner.name}
-            </p>
-            <p>
-              <span className="text-muted-foreground">Point Budget:</span>{" "}
-              {league.pointBudget}
-            </p>
-            <p>
-              <span className="text-muted-foreground">Downvotes:</span>{" "}
-              {league.allowDownvotes ? "Yes" : "No"}
-            </p>
-          </CardContent>
-        </Card>
+        <LeagueInfoCard league={league} members={members} isOwner={isOwner} />
       </div>
     </div>
   )

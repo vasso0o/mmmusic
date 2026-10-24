@@ -255,6 +255,56 @@ export async function leaveLeague(
   return { ok: true }
 }
 
+export async function removeLeagueMember(
+  leagueId: string,
+  userId: string
+): Promise<LeagueActionResult> {
+  const session = await auth()
+  if (!session?.user?.id) {
+    return { ok: false, error: "You must be logged in to remove a member." }
+  }
+
+  const league = await prisma.league.findUnique({
+    where: { id: leagueId },
+    select: { ownerId: true },
+  })
+  if (!league) {
+    return { ok: false, error: "League not found." }
+  }
+  if (league.ownerId !== session.user.id) {
+    return { ok: false, error: "Only the league owner can remove members." }
+  }
+  if (userId === league.ownerId) {
+    return { ok: false, error: "The league owner cannot be removed." }
+  }
+
+  try {
+    const result = await prisma.leagueMember.updateMany({
+      where: {
+        leagueId,
+        userId,
+        leftAt: null,
+        role: "MEMBER",
+      },
+      data: { leftAt: new Date() },
+    })
+
+    if (result.count === 0) {
+      return { ok: false, error: "This user is not an active league member." }
+    }
+  } catch (error) {
+    console.error("removeLeagueMember failed:", error)
+    return {
+      ok: false,
+      error: "Failed to remove the member. Please try again.",
+    }
+  }
+
+  revalidatePath(`/leagues/${leagueId}`)
+  revalidatePath("/")
+  return { ok: true }
+}
+
 export async function updateLeague(
   leagueId: string,
   formData: FormData

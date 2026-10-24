@@ -33,9 +33,13 @@ export async function MainMenu() {
         {isLoggedIn ? (
           <>
             <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground">
-                {session.user?.email}
-              </span>
+              <Link
+                href="/profile"
+                className="inline-flex h-8 items-center gap-2 rounded-lg border bg-background px-2.5 text-sm font-medium transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+              >
+                <span>{currentUser?.name ?? session.user?.name ?? "Account"}</span>
+                <span className="text-muted-foreground">Profile</span>
+              </Link>
               {currentUser && (
                 <AvatarEditorDialog
                   name={currentUser.name}

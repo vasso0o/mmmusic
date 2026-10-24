@@ -104,14 +104,14 @@ export function RoundCard({
               timeStyle: "short",
             })}
           </p>
-          <p>
-            Submit by:{" "}
+          <p className="rounded-md border border-amber-500/40 bg-amber-500/10 px-2 py-1 font-medium text-amber-900 dark:text-amber-200">
+            Submission ends:{" "}
             {round.submitDeadline.toLocaleString(undefined, {
               dateStyle: "medium",
               timeStyle: "short",
             })}
           </p>
-          <p>
+          <p className="rounded-md border border-amber-500/40 bg-amber-500/10 px-2 py-1 font-medium text-amber-900 dark:text-amber-200">
             Voting ends:{" "}
             {round.voteDeadline.toLocaleString(undefined, {
               dateStyle: "medium",
@@ -119,6 +119,7 @@ export function RoundCard({
             })}
           </p>
         </div>
+
         {isSubmissionPhase && (
           <section className="mt-6 space-y-3 border-t border-purple-300/70 pt-5 dark:border-purple-800">
             <div>
@@ -126,7 +127,7 @@ export function RoundCard({
                 <>
                   <h3 className="text-lg font-semibold">Submit your song</h3>
                   <p className="text-sm text-muted-foreground">
-                    Find a track that fits this round&apos;s theme.
+                    You can change it as long as submissions is open.
                   </p>
                 </>
               ) : (
@@ -164,7 +165,7 @@ export function RoundCard({
                 href={`/leagues/${leagueId}/rounds/${round.id}/vote`}
                 className="text-sm font-medium text-primary hover:underline"
               >
-                Go to ballot
+                Go to vote
               </Link>
             </div>
             <MemberStatusAvatars
