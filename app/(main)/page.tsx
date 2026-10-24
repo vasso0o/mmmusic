@@ -82,7 +82,7 @@ async function MainPageContent() {
           Joined Leagues
         </h2>
         {joinedLeagues.length === 0 ? (
-          <p className="text-muted-foreground">
+          <p className="text-purple-400 font-semibold mt-2">
             You haven&apos;t joined any leagues yet.
           </p>
         ) : (
@@ -107,7 +107,7 @@ async function MainPageContent() {
           Your Created Leagues
         </h2>
         {ownedLeagues.length === 0 ? (
-          <p className="text-muted-foreground">
+          <p className="text-purple-400 font-semibold mt-2">
             You haven&apos;t created any leagues yet.
           </p>
         ) : (
