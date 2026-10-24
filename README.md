@@ -26,7 +26,7 @@ Round pages update any overdue phase transitions when members visit. For unatten
 
 ## Song search
 
-The submission form searches YouTube and SoundCloud through `GET /api/songs/search`. YouTube search uses the `youtubei.js` package and does not require a YouTube Data API key. Configure `SOUNDCLOUD_CLIENT_ID` with a SoundCloud API client ID in the server environment. Search requires a signed-in user; `OTHER` is available for pasted links but does not provide catalog search.
+The submission form searches YouTube and SoundCloud through `GET /api/songs/search`. YouTube search uses the `youtubei.js` package and does not require a YouTube Data API key. Configure `SOUNDCLOUD_CLIENT_ID` with a SoundCloud API client ID in the server environment. Search requires a signed-in user.
 
 ## Learn More
 

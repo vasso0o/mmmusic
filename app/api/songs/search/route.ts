@@ -134,7 +134,7 @@ export async function GET(request: Request) {
   const platform = searchParams.get("platform")
   const query = searchParams.get("q")?.trim() ?? ""
 
-  if (!isRoundPlatform(platform) || platform === "OTHER") {
+  if (!isRoundPlatform(platform)) {
     return NextResponse.json(
       { error: "Choose YouTube or SoundCloud to search." },
       { status: 400 }
