@@ -107,7 +107,7 @@ export async function submitSong(
   }
 
   revalidatePath(`/leagues/${leagueId}/rounds/${roundId}`)
-  revalidatePath(`/leagues/${leagueId}/rounds/${roundId}/submit`)
+  revalidatePath(`/leagues/${leagueId}`)
   return { ok: true }
 }
 
@@ -278,5 +278,6 @@ export async function castVote(
 
   revalidatePath(`/leagues/${leagueId}/rounds/${roundId}`)
   revalidatePath(`/leagues/${leagueId}/rounds/${roundId}/vote`)
+  revalidatePath(`/leagues/${leagueId}`)
   return { ok: true }
 }

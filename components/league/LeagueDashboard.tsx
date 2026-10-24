@@ -1,13 +1,14 @@
 import Link from "next/link"
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
-import { RoundControls } from "@/components/round/RoundControls"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { RoundCard } from "@/components/round/RoundCard"
 import { Button } from "@/components/ui/button"
+import type { RoundPhase, RoundPlatform } from "@/lib/round-types"
+
+type DashboardMember = {
+  id: string
+  name: string
+  image: string | null
+}
 
 type DashboardLeague = {
   id: string
@@ -22,23 +23,35 @@ type DashboardRound = {
   roundNumber: number
   theme: string
   themeDesc: string | null
-  phase: string
+  phase: RoundPhase
   startsAt: Date
   submitDeadline: Date
   voteDeadline: Date
   createdById: string
+  submissions: {
+    userId: string
+    url: string
+    platform: RoundPlatform
+    title: string | null
+    artist: string | null
+    pitch: string | null
+  }[]
+  votes: { voterId: string }[]
 }
 
 export function LeagueDashboard({
   league,
   rounds,
   currentUserId,
+  members,
 }: {
   league: DashboardLeague
   rounds: DashboardRound[]
   currentUserId: string
+  members: DashboardMember[]
 }) {
   const isOwner = league.ownerId === currentUserId
+  const currentRoundId = rounds.find((round) => round.phase !== "REVEALED")?.id
 
   return (
     <div className="mt-8 grid grid-cols-1 gap-6 md:grid-cols-3">
@@ -60,63 +73,18 @@ export function LeagueDashboard({
             </p>
           ) : (
             rounds.map((round) => {
-              const canDelete =
-                isOwner || round.createdById === currentUserId
+              const isCurrentRound = round.id === currentRoundId
 
               return (
-                <Card key={round.id}>
-                  <CardHeader className="flex flex-row items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <CardTitle>
-                        <Link
-                          href={`/leagues/${league.id}/rounds/${round.id}`}
-                          className="hover:underline"
-                        >
-                          Round {round.roundNumber}: {round.theme}
-                        </Link>
-                      </CardTitle>
-                      <CardDescription className="mt-1">
-                        {round.themeDesc || "No description."}
-                      </CardDescription>
-                    </div>
-                    <RoundControls
-                      roundId={round.id}
-                      isOwner={isOwner}
-                      canDelete={canDelete}
-                    />
-                  </CardHeader>
-                  <CardContent>
-                    <div className="mt-2 flex flex-wrap gap-4 text-xs text-muted-foreground">
-                      <p>
-                        Phase:{" "}
-                        <span className="font-semibold text-foreground">
-                          {round.phase}
-                        </span>
-                      </p>
-                      <p>
-                        Starts:{" "}
-                        {round.startsAt.toLocaleString(undefined, {
-                          dateStyle: "medium",
-                          timeStyle: "short",
-                        })}
-                      </p>
-                      <p>
-                        Submit by:{" "}
-                        {round.submitDeadline.toLocaleString(undefined, {
-                          dateStyle: "medium",
-                          timeStyle: "short",
-                        })}
-                      </p>
-                      <p>
-                        Voting ends:{" "}
-                        {round.voteDeadline.toLocaleString(undefined, {
-                          dateStyle: "medium",
-                          timeStyle: "short",
-                        })}
-                      </p>
-                    </div>
-                  </CardContent>
-                </Card>
+                <RoundCard
+                  key={round.id}
+                  leagueId={league.id}
+                  round={round}
+                  currentUserId={currentUserId}
+                  isOwner={isOwner}
+                  isCurrentRound={isCurrentRound}
+                  members={members}
+                />
               )
             })
           )}

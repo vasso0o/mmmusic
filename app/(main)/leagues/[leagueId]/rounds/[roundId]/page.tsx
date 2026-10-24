@@ -49,7 +49,9 @@ async function RoundPageContent({
   if (!round) return notFound()
 
   const base = `/leagues/${leagueId}/rounds/${roundId}`
-  if (round.phase === RoundPhase.SUBMISSION) return redirect(`${base}/submit`)
+  if (round.phase === RoundPhase.SUBMISSION) {
+    return redirect(`/leagues/${leagueId}`)
+  }
   if (round.phase === RoundPhase.VOTING) return redirect(`${base}/vote`)
   return redirect(`${base}/results`)
 }

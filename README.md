@@ -24,6 +24,10 @@ This project uses [`next/font`](https://nextjs.org/docs/app/building-your-applic
 
 Round pages update any overdue phase transitions when members visit. For unattended transitions, configure a scheduled request to `GET /api/cron/flip-phases` and set a `CRON_SECRET` environment variable in the deployment environment. The scheduler must send the matching value in the `Authorization: Bearer <CRON_SECRET>` header. The endpoint returns the number of rounds moved into voting and revealed.
 
+## Song search
+
+The submission form searches YouTube and SoundCloud through `GET /api/songs/search`. YouTube search uses the `youtubei.js` package and does not require a YouTube Data API key. Configure `SOUNDCLOUD_CLIENT_ID` with a SoundCloud API client ID in the server environment. Search requires a signed-in user; `OTHER` is available for pasted links but does not provide catalog search.
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:

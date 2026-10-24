@@ -10,6 +10,7 @@ import { LeaveLeagueButton } from "@/components/league/LeaveLeagueButton"
 import { PublicLeagueView } from "@/components/league/PublicLeagueView"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { processRoundPhases } from "@/lib/rounds"
 
 export default function LeaguePage({
   params,
@@ -35,6 +36,8 @@ async function LeaguePageContent({
     redirect(`/login?callbackUrl=${encodeURIComponent(`/leagues/${leagueId}`)}`)
   }
 
+  await processRoundPhases()
+
   const league = await prisma.league.findFirst({
     where: { id: leagueId, archivedAt: null },
     include: {
@@ -46,7 +49,7 @@ async function LeaguePageContent({
     notFound()
   }
 
-  const [membership, memberCount, currentUser] = await Promise.all([
+  const [membership, memberCount, currentUser, activeMembers] = await Promise.all([
     prisma.leagueMember.findUnique({
       where: {
         leagueId_userId: { leagueId, userId: session.user.id },
@@ -60,13 +63,33 @@ async function LeaguePageContent({
       where: { id: session.user.id },
       select: { name: true, image: true },
     }),
+    prisma.leagueMember.findMany({
+      where: { leagueId, leftAt: null },
+      select: {
+        user: { select: { id: true, name: true, image: true } },
+      },
+    }),
   ])
+  const members = activeMembers.map(({ user }) => user)
   const isOwner = league.ownerId === session.user.id
   const isMember = isOwner || membership?.leftAt === null
   const rounds = isMember
     ? await prisma.round.findMany({
         where: { leagueId },
         orderBy: { roundNumber: "asc" },
+        include: {
+          votes: { select: { voterId: true } },
+          submissions: {
+            select: {
+              userId: true,
+              url: true,
+              platform: true,
+              title: true,
+              artist: true,
+              pitch: true,
+            },
+          },
+        },
       })
     : []
 
@@ -121,6 +144,7 @@ async function LeaguePageContent({
             league={league}
             rounds={rounds}
             currentUserId={session.user.id}
+            members={members}
           />
           {isOwner && <EditLeagueForm league={league} />}
         </>
