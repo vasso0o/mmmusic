@@ -43,17 +43,37 @@ async function recalculateTimeline(
   }
 }
 
-function readOptionalHttpUrl(value: FormDataEntryValue | null) {
-  if (typeof value !== "string" || !value.trim()) return { ok: true as const, value: null }
+const MAX_LEAGUE_IMAGE_BYTES = 800 * 1024
 
-  try {
-    const url = new URL(value.trim())
-    if (url.protocol !== "http:" && url.protocol !== "https:") {
-      return { ok: false as const }
+async function readOptionalLeagueImage(value: FormDataEntryValue | null) {
+  if (value === null) return { ok: true as const, value: null }
+  if (!(value instanceof File)) {
+    return { ok: false as const, error: "Upload a cropped JPEG image." }
+  }
+  if (value.size === 0) return { ok: true as const, value: null }
+  if (value.type !== "image/jpeg" || value.size > MAX_LEAGUE_IMAGE_BYTES) {
+    return {
+      ok: false as const,
+      error: "Cropped league image must be a JPEG smaller than 800 KB.",
     }
-    return { ok: true as const, value: url.toString() }
-  } catch {
-    return { ok: false as const }
+  }
+
+  const bytes = new Uint8Array(await value.arrayBuffer())
+  if (
+    bytes.length < 3 ||
+    bytes[0] !== 0xff ||
+    bytes[1] !== 0xd8 ||
+    bytes[2] !== 0xff
+  ) {
+    return {
+      ok: false as const,
+      error: "The uploaded image is not a valid JPEG.",
+    }
+  }
+
+  return {
+    ok: true as const,
+    value: `data:image/jpeg;base64,${Buffer.from(bytes).toString("base64")}`,
   }
 }
 
@@ -69,12 +89,11 @@ export async function createLeague(
   const passwordValue = formData.get("password")
   const pointBudgetValue = formData.get("pointBudget")
   const descriptionValue = formData.get("description")
-  const imageValue = formData.get("image")
   const name = typeof nameValue === "string" ? nameValue.trim() : ""
   const password = typeof passwordValue === "string" ? passwordValue : ""
   const description =
     typeof descriptionValue === "string" ? descriptionValue.trim() : ""
-  const image = readOptionalHttpUrl(imageValue)
+  const image = await readOptionalLeagueImage(formData.get("image"))
   const pointBudget =
     typeof pointBudgetValue === "string" && pointBudgetValue.trim()
       ? Number(pointBudgetValue)
@@ -104,7 +123,7 @@ export async function createLeague(
   }
 
   if (!image.ok) {
-    return { ok: false, error: "Image must be a valid HTTP or HTTPS URL." }
+    return { ok: false, error: image.error }
   }
 
   const passwordHash = await bcrypt.hash(password, 12)
@@ -247,7 +266,7 @@ export async function updateLeague(
 
   const league = await prisma.league.findUnique({
     where: { id: leagueId },
-    select: { ownerId: true, archivedAt: true },
+    select: { ownerId: true, archivedAt: true, image: true },
   })
   if (!league || league.archivedAt || league.ownerId !== session.user.id) {
     return {
@@ -261,11 +280,10 @@ export async function updateLeague(
   const maxRoundsValue = formData.get("maxRounds")
   const passwordValue = formData.get("password")
   const descriptionValue = formData.get("description")
-  const imageValue = formData.get("image")
   const name = typeof nameValue === "string" ? nameValue.trim() : ""
   const description =
     typeof descriptionValue === "string" ? descriptionValue.trim() : ""
-  const image = readOptionalHttpUrl(imageValue)
+  const image = await readOptionalLeagueImage(formData.get("image"))
   const pointBudget =
     typeof pointBudgetValue === "string" && pointBudgetValue.trim()
       ? Number(pointBudgetValue)
@@ -289,7 +307,7 @@ export async function updateLeague(
   }
 
   if (!image.ok) {
-    return { ok: false, error: "Image must be a valid HTTP or HTTPS URL." }
+    return { ok: false, error: image.error }
   }
 
   if (!Number.isInteger(pointBudget) || pointBudget < 1) {
@@ -316,7 +334,9 @@ export async function updateLeague(
   const data = {
     name,
     description: description || null,
-    image: image.value,
+    image:
+      image.value ??
+      (formData.get("removeImage") === "on" ? null : league.image),
     pointBudget,
     allowDownvotes,
     maxRounds,

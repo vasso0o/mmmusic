@@ -1,10 +1,14 @@
 "use client"
 
-import { useState, useTransition } from "react"
+import { useRef, useState, useTransition } from "react"
 import { Settings } from "lucide-react"
 import { updateLeague } from "@/app/(main)/leagues/actions"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import {
+  LeagueImageInput,
+  type LeagueImageInputHandle,
+} from "@/components/league/LeagueImageInput"
 
 type EditableLeague = {
   id: string
@@ -20,10 +24,15 @@ export function EditLeagueForm({ league }: { league: EditableLeague }) {
   const [isOpen, setIsOpen] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
+  const imageInputRef = useRef<LeagueImageInputHandle>(null)
 
   function onSubmit(formData: FormData) {
     setError(null)
     startTransition(async () => {
+      const image = await imageInputRef.current?.getCroppedImage()
+      if (image === null) return
+      if (image) formData.set("image", image)
+
       const result = await updateLeague(league.id, formData)
       if (!result.ok) {
         setError(result.error)
@@ -101,21 +110,17 @@ export function EditLeagueForm({ league }: { league: EditableLeague }) {
             />
           </div>
 
-          <div className="space-y-2">
-            <label
-              htmlFor="edit-league-image"
-              className="text-sm font-medium"
-            >
-              Cover Image URL
+          <LeagueImageInput ref={imageInputRef} currentImage={league.image} />
+          {league.image && (
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                name="removeImage"
+                type="checkbox"
+                className="size-4 accent-primary"
+              />
+              Remove current cover image
             </label>
-            <Input
-              id="edit-league-image"
-              name="image"
-              type="url"
-              defaultValue={league.image ?? ""}
-              placeholder="https://example.com/image.jpg"
-            />
-          </div>
+          )}
 
           <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
             <div className="space-y-2">

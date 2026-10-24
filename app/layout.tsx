@@ -22,7 +22,6 @@ export const metadata: Metadata = {
     default: "MeloDiss",
     template: "%s · MeloDiss",
   },
-  description: "Search and explore music, powered by YouTube Music.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

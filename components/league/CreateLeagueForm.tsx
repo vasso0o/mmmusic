@@ -5,16 +5,25 @@ import { Plus } from "lucide-react"
 import { createLeague } from "@/app/(main)/leagues/actions"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import {
+  LeagueImageInput,
+  type LeagueImageInputHandle,
+} from "@/components/league/LeagueImageInput"
 
 export function CreateLeagueForm() {
   const [isOpen, setIsOpen] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
   const formRef = useRef<HTMLFormElement>(null)
+  const imageInputRef = useRef<LeagueImageInputHandle>(null)
 
   function onSubmit(formData: FormData) {
     setError(null)
     startTransition(async () => {
+      const image = await imageInputRef.current?.getCroppedImage()
+      if (image === null) return
+      if (image) formData.set("image", image)
+
       const result = await createLeague(formData)
       if (!result.ok) {
         setError(result.error)
@@ -27,14 +36,17 @@ export function CreateLeagueForm() {
   }
 
   return (
-    <section className="mt-8 w-full max-w-5xl rounded-lg border p-4">
+    <section
+      className={`mt-6 max-w-5xl p-4 ${isOpen ? "" : "flex"}`}
+    >
+      <div className="w-full text-[10rem]">/</div>
       <button
         type="button"
         onClick={() => {
           setIsOpen((open) => !open)
           setError(null)
         }}
-        className="flex items-center gap-2 text-lg font-semibold transition-colors hover:text-primary"
+        className="flex items-center gap-2 mt-2 text-lg font-semibold transition-colors hover:text-primary text-nowrap"
         aria-expanded={isOpen}
       >
         Create New League
@@ -96,17 +108,7 @@ export function CreateLeagueForm() {
             />
           </div>
 
-          <div className="space-y-2">
-            <label htmlFor="league-image" className="text-sm font-medium">
-              Cover Image URL (Optional)
-            </label>
-            <Input
-              id="league-image"
-              name="image"
-              type="url"
-              placeholder="https://example.com/image.jpg"
-            />
-          </div>
+          <LeagueImageInput ref={imageInputRef} />
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="space-y-2">

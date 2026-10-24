@@ -6,7 +6,6 @@ import type { RoundPlatform } from "@/lib/round-types"
 const platformLabels: Record<RoundPlatform, string> = {
   YOUTUBE: "YouTube",
   SOUNDCLOUD: "SoundCloud",
-  OTHER: "Music link",
 }
 
 export function SongEmbed({

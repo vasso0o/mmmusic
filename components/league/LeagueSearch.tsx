@@ -59,7 +59,7 @@ export function LeagueSearch() {
   return (
     <div className="relative w-full max-w-2xl">
       <div className="relative">
-        <Search className="absolute top-2.5 left-2.5 size-4 text-muted-foreground" />
+        <Search className="absolute top-2 left-2.5 size-4 text-muted-foreground" />
         <Input
           type="search"
           placeholder="Search leagues by name..."

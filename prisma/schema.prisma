@@ -102,7 +102,6 @@ enum RoundPhase {
 enum Platform {
   YOUTUBE
   SOUNDCLOUD
-  OTHER
 }
 
 enum NotificationType {

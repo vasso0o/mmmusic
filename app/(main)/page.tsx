@@ -44,7 +44,15 @@ async function MainPageContent() {
         userId: session.user.id,
         leftAt: null,
       },
-      include: { league: true },
+      include: {
+        league: {
+          include: {
+            _count: {
+              select: { members: { where: { leftAt: null } } },
+            },
+          },
+        },
+      },
       orderBy: { joinedAt: "desc" },
       take: 6,
     }),
@@ -52,6 +60,11 @@ async function MainPageContent() {
       where: {
         ownerId: session.user.id,
         archivedAt: null,
+      },
+      include: {
+        _count: {
+          select: { members: { where: { leftAt: null } } },
+        },
       },
       orderBy: { createdAt: "desc" },
       take: 6,
@@ -62,8 +75,10 @@ async function MainPageContent() {
     <div className="mx-auto flex w-full max-w-5xl flex-col items-center px-4 py-8">
       <LeagueSearch />
 
-      <section className="mt-12 w-full">
-        <h2 className="mb-4 text-xl font-bold">Joined Leagues</h2>
+      <section className="relative mt-[6rem] w-full">
+        <h2 className="absolute top-[-40px] z-[1] text-4xl leading-none font-bold opacity-50 sm:text-[4rem]">
+          Joined Leagues
+        </h2>
         {joinedLeagues.length === 0 ? (
           <p className="text-muted-foreground">
             You haven&apos;t joined any leagues yet.
@@ -75,6 +90,8 @@ async function MainPageContent() {
                 key={membership.leagueId}
                 id={membership.league.id}
                 title={membership.league.name}
+                image={membership.league.image}
+                memberCount={membership.league._count.members}
               />
             ))}
           </div>
@@ -83,8 +100,10 @@ async function MainPageContent() {
 
       <CreateLeagueForm />
 
-      <section className="mt-12 w-full">
-        <h2 className="mb-4 text-xl font-bold">Your Created Leagues</h2>
+      <section className="relative mt-[6rem] w-full">
+        <h2 className="absolute top-[-40px] z-[1] text-4xl leading-none font-bold opacity-50 sm:text-[4rem]">
+          Your Created Leagues
+        </h2>
         {ownedLeagues.length === 0 ? (
           <p className="text-muted-foreground">
             You haven&apos;t created any leagues yet.
@@ -92,7 +111,13 @@ async function MainPageContent() {
         ) : (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
             {ownedLeagues.map((league) => (
-              <LeagueCard key={league.id} id={league.id} title={league.name} />
+              <LeagueCard
+                key={league.id}
+                id={league.id}
+                title={league.name}
+                image={league.image}
+                memberCount={league._count.members}
+              />
             ))}
           </div>
         )}
