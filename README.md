@@ -20,6 +20,10 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
+## Round phase scheduling
+
+Round pages update any overdue phase transitions when members visit. For unattended transitions, configure a scheduled request to `GET /api/cron/flip-phases` and set a `CRON_SECRET` environment variable in the deployment environment. The scheduler must send the matching value in the `Authorization: Bearer <CRON_SECRET>` header. The endpoint returns the number of rounds moved into voting and revealed.
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:

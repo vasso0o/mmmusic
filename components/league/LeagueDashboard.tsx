@@ -129,6 +129,12 @@ export function LeagueDashboard({
             <CardTitle>League Info</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2 text-sm">
+            <Link
+              href={`/leagues/${league.id}/stats`}
+              className="inline-block font-medium text-primary hover:underline"
+            >
+              League statistics
+            </Link>
             <p>
               <span className="text-muted-foreground">Owner:</span>{" "}
               {league.owner.name}
