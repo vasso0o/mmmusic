@@ -1,5 +1,6 @@
 import { Suspense } from "react"
 import { redirect } from "next/navigation"
+import { connection } from "next/server"
 import { CreateLeagueForm } from "@/components/league/CreateLeagueForm"
 import { LeagueCard } from "@/components/league/LeagueCard"
 import { LeagueSearch } from "@/components/league/LeagueSearch"
@@ -32,6 +33,7 @@ export default function MainPage() {
 }
 
 async function MainPageContent() {
+  await connection()
   const session = await auth()
 
   if (!session?.user?.id) {
