@@ -48,7 +48,7 @@ function LoginFormInner() {
   }
 
   return (
-    <Card className="w-full max-w-sm">
+    <Card className="w-full max-w-sm rounded-tl-none login-form-clip">
       <CardHeader>
         <CardTitle>Welcome back</CardTitle>
         <CardDescription>Sign in to continue</CardDescription>

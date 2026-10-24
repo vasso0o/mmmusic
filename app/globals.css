@@ -128,3 +128,67 @@
     @apply font-sans;
   }
 }
+
+@keyframes tremble {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) skewX(0deg);
+    text-shadow:
+      0.05em 0 0 rgb(255 0 60 / 0.6),
+      -0.05em 0 0 rgb(0 255 255 / 0.45);
+  }
+  20% {
+    transform: translate3d(-2px, 1px, 0) skewX(-2deg);
+  }
+  40% {
+    transform: translate3d(2px, -1px, 0) skewX(2deg);
+    text-shadow:
+      -0.07em 0 0 rgb(255 0 60 / 0.6),
+      0.07em 0 0 rgb(0 255 255 / 0.45);
+  }
+  60% {
+    transform: translate3d(-1px, -2px, 0) skewX(-1deg);
+  }
+  80% {
+    transform: translate3d(1px, 2px, 0) skewX(1deg);
+  }
+}
+
+@keyframes word-in {
+  from {
+    opacity: 0;
+    transform: translateY(0.25em) scale(0.92);
+    filter: blur(5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+}
+
+.animate-tremble {
+  animation: tremble 0.22s linear infinite;
+}
+
+.animate-word-in {
+  animation: word-in 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-tremble,
+  .animate-word-in {
+    animation: none;
+  }
+}
+
+@media (min-width: 1024px) {
+  .login-hero-clip {
+    clip-path: polygon(0 0, 79% 0, 100% 100%, 0% 100%);
+  }
+
+  .login-form-clip {
+    clip-path: polygon(0 0, 100% 0, 100% 100%, 21% 100%)!important;
+    padding-left: 4rem;
+  }
+}
